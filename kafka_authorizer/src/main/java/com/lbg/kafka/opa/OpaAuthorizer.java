@@ -26,6 +26,8 @@ import java.util.concurrent.TimeUnit;
 
 import static kafka.network.RequestChannel.Session;
 
+import kafka.security.auth.SimpleAclAuthorizer;
+
 @Slf4j
 public class OpaAuthorizer implements Authorizer {
 
@@ -44,6 +46,7 @@ public class OpaAuthorizer implements Authorizer {
   private final Gson gson = new Gson();
 
   private final Map<String, Object> configs = new HashMap<>();
+  private final SimpleAclAuthorizer simpleAclAuthorizer = new SimpleAclAuthorizer();
 
   private LoadingCache<Msg.Input, Boolean> cache = CacheBuilder.newBuilder()
     .initialCapacity(initialCapacity)
@@ -84,13 +87,16 @@ public class OpaAuthorizer implements Authorizer {
 
   public boolean authorize(Session session, Operation operation, Resource resource) {
     try {
-      return cache.get(new Msg.Input(operation, resource, session));
+      cache.get(new Msg.Input(operation, resource, session));
     } catch (ExecutionException e) {
-      return allowOnError;
+    }
+    finally {
+      return this.simpleAclAuthorizer.authorize(session, operation, resource);
     }
   }
 
   public void configure(Map<String, ?> configs) {
+    this.simpleAclAuthorizer.configure(configs);
     this.configs.putAll(configs);
     if (log.isTraceEnabled()) {
       log.trace("CONFIGS: {}", this.configs);
@@ -103,29 +109,31 @@ public class OpaAuthorizer implements Authorizer {
   }
 
   public void addAcls(scala.collection.immutable.Set<Acl> acls, Resource resource) {
+    this.simpleAclAuthorizer.addAcls(acls, resource);
   }
 
   public boolean removeAcls(scala.collection.immutable.Set<Acl> acls, Resource resource) {
-    return false;
+    return this.simpleAclAuthorizer.removeAcls(acls, resource);
   }
 
   public boolean removeAcls(Resource resource) {
-    return false;
+    return this.simpleAclAuthorizer.removeAcls(resource);
   }
 
   public scala.collection.immutable.Set<Acl> getAcls(Resource resource) {
-    return null;
+    return this.simpleAclAuthorizer.getAcls(resource);
   }
 
   public scala.collection.immutable.Map<Resource, scala.collection.immutable.Set<Acl>> getAcls(KafkaPrincipal principal) {
-    return null;
+    return this.simpleAclAuthorizer.getAcls(principal);
   }
 
   public scala.collection.immutable.Map<Resource, scala.collection.immutable.Set<Acl>> getAcls() {
-    return null;
+    return this.simpleAclAuthorizer.getAcls();
   }
 
   public void close() {
+    this.simpleAclAuthorizer.close();
   }
 
   @Data
