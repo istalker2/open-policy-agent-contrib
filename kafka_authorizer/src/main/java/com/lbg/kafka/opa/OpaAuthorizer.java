@@ -87,7 +87,7 @@ public class OpaAuthorizer implements Authorizer {
 
   public boolean authorize(Session session, Operation operation, Resource resource) {
     try {
-      cache.get(new Msg.Input(operation, resource, session));
+      cache.get(new Msg.Input("kafka", operation, resource, session));
     } catch (ExecutionException e) {
     }
     finally {
@@ -142,6 +142,7 @@ public class OpaAuthorizer implements Authorizer {
 
     @Data
     static class Input {
+      private final String type;
       private final Operation operation;
       private final Resource resource;
       private final Session session;
